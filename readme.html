@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图表说明文档</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2c3e50;
+            margin-top: 30px;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .chart-explanation {
+            margin-bottom: 40px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .highlight {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid #4CAF50;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>翻身时间数据可视化图表说明</h1>
+
+        <div class="chart-explanation">
+            <h2>1. 每小时计数趋势图</h2>
+            <div class="section">
+                <h3>数据处理方式</h3>
+                <ul>
+                    <li>统计每小时的翻身次数，仅包含22:00至次日8:00的数据</li>
+                    <li>在每天的8点和22点之间添加断点，使不同天的数据在视觉上分开</li>
+                    <li>按时间顺序排列，展示连续的时间序列数据</li>
+                </ul>
+            </div>
+            <div class="section">
+                <h3>如何解读</h3>
+                <ul>
+                    <li>X轴：时间轴，显示具体的日期和小时</li>
+                    <li>Y轴：每小时的翻身次数</li>
+                    <li>曲线的高峰表示该时段翻身频繁，低谷表示翻身较少</li>
+                    <li>断点处表示白天时间段（8:00-22:00），此时段数据不统计</li>
+                </ul>
+            </div>
+            <div class="highlight">
+                通过这个图，可以观察每个晚上不同时段的翻身频率变化，识别出翻身最频繁和最少的时间段。
+            </div>
+        </div>
+
+        <div class="chart-explanation">
+            <h2>2. 每日每小时对比图</h2>
+            <div class="section">
+                <h3>数据处理方式</h3>
+                <ul>
+                    <li>将每天的数据按小时分组（22:00-次日8:00）</li>
+                    <li>每天用不同颜色的线表示，便于对比</li>
+                    <li>使用渐变色系统，确保相邻日期的颜色有明显区分</li>
+                </ul>
+            </div>
+            <div class="section">
+                <h3>如何解读</h3>
+                <ul>
+                    <li>X轴：固定的时间点（22:00-8:00）</li>
+                    <li>Y轴：每小时的翻身次数</li>
+                    <li>每条线代表一天的数据</li>
+                    <li>线条的重叠程度反映不同日期之间的相似性</li>
+                </ul>
+            </div>
+            <div class="highlight">
+                这个图可以直观地比较不同日期之间的翻身模式差异，发现是否存在规律性的翻身时间段。
+            </div>
+        </div>
+
+        <div class="chart-explanation">
+            <h2>3. 每日总次数趋势图</h2>
+            <div class="section">
+                <h3>数据处理方式</h3>
+                <ul>
+                    <li>统计每天22:00到次日8:00的总翻身次数</li>
+                    <li>按日期排序，展示连续的趋势变化</li>
+                    <li>使用填充区域增强视觉效果</li>
+                </ul>
+            </div>
+            <div class="section">
+                <h3>如何解读</h3>
+                <ul>
+                    <li>X轴：日期</li>
+                    <li>Y轴：每天的总翻身次数</li>
+                    <li>趋势线的上升表示翻身次数增加，下降表示减少</li>
+                </ul>
+            </div>
+            <div class="highlight">
+                通过这个图，可以观察翻身次数的整体趋势变化，识别出异常的日期。
+            </div>
+        </div>
+
+        <div class="chart-explanation">
+            <h2>4. 时间间隔分布直方图</h2>
+            <div class="section">
+                <h3>数据处理方式</h3>
+                <ul>
+                    <li>计算相邻两次翻身之间的时间间隔（分钟）</li>
+                    <li>将时间间隔分组（每5分钟一组）</li>
+                    <li>统计每个时间间隔组的频次</li>
+                    <li>只统计3小时以内的间隔</li>
+                </ul>
+            </div>
+            <div class="section">
+                <h3>如何解读</h3>
+                <ul>
+                    <li>X轴：时间间隔范围（分钟）</li>
+                    <li>Y轴：出现频次</li>
+                    <li>柱状高度反映该时间间隔的常见程度</li>
+                </ul>
+            </div>
+            <div class="highlight">
+                这个图可以帮助了解翻身间隔的分布规律，找出最常见的翻身间隔时间。
+            </div>
+        </div>
+
+        <div class="chart-explanation">
+            <h2>5. 异常事件检测散点图</h2>
+            <div class="section">
+                <h3>数据处理方式</h3>
+                <ul>
+                    <li>使用四分位数方法识别异常值：
+                        <ul>
+                            <li>计算时间间隔的Q1（25%分位数）和Q3（75%分位数）</li>
+                            <li>计算四分位距（IQR = Q3 - Q1）</li>
+                            <li>设定异常阈值：下限 = Q1 - 1.5×IQR，上限 = Q3 + 1.5×IQR</li>
+                        </ul>
+                    </li>
+                    <li>将时间间隔分为正常和异常两类</li>
+                </ul>
+            </div>
+            <div class="section">
+                <h3>如何解读</h3>
+                <ul>
+                    <li>X轴：时间</li>
+                    <li>Y轴：翻身间隔时间（分钟）</li>
+                    <li>蓝色点：正常的翻身间隔</li>
+                    <li>红色点：异常的翻身间隔</li>
+                    <li>虚线：异常判定的上下限阈值</li>
+                </ul>
+            </div>
+            <div class="highlight">
+                通过这个图，可以快速识别异常的翻身间隔，了解睡眠中可能存在的异常情况。
+            </div>
+        </div>
+
+        <div class="chart-explanation">
+            <h2>6. 翻身时间分布图</h2>
+            <div class="section">
+                <h3>数据处理方式</h3>
+                <ul>
+                    <li>将每天的翻身时间点映射到21:00-08:00的时间范围</li>
+                    <li>按日期分组，每天占据一行</li>
+                    <li>同时显示熄灯时间（红色三角形标记）</li>
+                </ul>
+            </div>
+            <div class="section">
+                <h3>如何解读</h3>
+                <ul>
+                    <li>X轴：时间（21:00-08:00）</li>
+                    <li>Y轴：日期（从上到下按时间倒序排列）</li>
+                    <li>蓝色圆点：翻身时间点</li>
+                    <li>红色三角形：熄灯时间</li>
+                    <li>点的分布密度反映翻身频率</li>
+                </ul>
+            </div>
+            <div class="highlight">
+                这个图可以直观地展示每天的翻身时间分布，并与熄灯时间对照，帮助分析睡眠模式。
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
