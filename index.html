@@ -12,45 +12,59 @@
         body {
             font-family: 'Arial', sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            background-color: white;
+            flex: 1;
         }
         .chart-container {
-            margin: 20px 0;
+            margin: 10px 0;
             padding: 20px;
             border: 1px solid #eee;
             border-radius: 5px;
             height: 400px;
+            width: 100%;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
         }
         .controls {
             margin: 20px 0;
             padding: 15px;
             background-color: #f8f9fa;
             border-radius: 5px;
+            width: 100%;
+            box-sizing: border-box;
         }
         .date-range {
             display: flex;
             gap: 10px;
             align-items: center;
             margin-bottom: 10px;
+            flex-wrap: wrap;
         }
         h1 {
             color: #333;
             text-align: center;
+            margin: 20px 0;
         }
         .chart-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 20px;
-            margin-top: 20px;
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+            box-sizing: border-box;
         }
         /* 添加标签页样式 */
         .tab {
@@ -58,6 +72,8 @@
             border: 1px solid #ccc;
             background-color: #f1f1f1;
             border-radius: 5px 5px 0 0;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .tab button {
@@ -69,6 +85,7 @@
             padding: 14px 16px;
             transition: 0.3s;
             font-size: 16px;
+            min-width: 120px;
         }
 
         .tab button:hover {
@@ -86,6 +103,8 @@
             border: 1px solid #ccc;
             border-top: none;
             border-radius: 0 0 5px 5px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .tabcontent.active {
@@ -95,6 +114,8 @@
         /* 说明文档样式 */
         .doc-section {
             margin-bottom: 30px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .doc-section h3 {
@@ -108,6 +129,32 @@
             padding: 15px;
             border-left: 4px solid #4CAF50;
             margin: 10px 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 响应式设计 */
+        @media screen and (max-width: 1200px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            .chart-container {
+                height: 300px;
+                padding: 10px;
+            }
+            .date-range {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .date-range input {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -120,10 +167,9 @@
             </div>
             <div class="date-range">
                 <label>开始日期：</label>
-                <input type="date" id="startDate">
+                <input type="date" id="startDate" onchange="updateCharts()">
                 <label>结束日期：</label>
-                <input type="date" id="endDate">
-                <button onclick="updateCharts()">更新图表</button>
+                <input type="date" id="endDate" onchange="updateCharts()">
             </div>
         </div>
         <div class="tab">
@@ -133,6 +179,7 @@
 
         <div id="charts" class="tabcontent active">
             <div class="chart-grid">
+                <!-- 删除测试图表 -->
                 <div class="chart-container">
                     <canvas id="hourlyChart"></canvas>
                 </div>
@@ -150,6 +197,9 @@
                 </div>
                 <div class="chart-container">
                     <canvas id="sleepCycleChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="sleepDurationChart"></canvas>
                 </div>
             </div>
         </div>
@@ -190,7 +240,7 @@
             <div class="doc-section">
                 <h3>图表说明</h3>
                 <div class="chart-explanation">
-                    <h4>1. 每小时计数趋势图</h4>
+                    <h4>1. 每小时计数折线图</h4>
                     <div class="highlight-box">
                         <p><strong>用途：</strong>展示每小时翻身次数的变化趋势</p>
                         <p><strong>数据处理：</strong></p>
@@ -303,13 +353,27 @@
     <script>
         let currentData = null;
         let lightOffData = null;
+        let wakeUpData = null;
         let charts = {
             hourly: null,
             dailyComparison: null,
             dailyTotal: null,
             interval: null,
             anomaly: null,
-            sleepCycle: null
+            sleepCycle: null,
+            sleepDuration: null
+        };
+
+        // 定义统一的颜色方案
+        const colors = {
+            primary: 'rgb(75, 192, 192)',       // 主要数据颜色
+            secondary: 'rgb(255, 99, 132)',     // 次要/对比数据颜色
+            highlight: 'rgb(153, 102, 255)',    // 高亮数据颜色
+            background: {
+                primary: 'rgba(75, 192, 192, 0.2)',
+                secondary: 'rgba(255, 99, 132, 0.2)',
+                highlight: 'rgba(153, 102, 255, 0.2)'
+            }
         };
 
         function parseExcelDate(dateNum) {
@@ -356,6 +420,7 @@
                 for (let R = range.s.r + 1; R <= range.e.r; R++) {
                     const dateCell = turnSheet[XLSX.utils.encode_cell({r: R, c: 0})];
                     const timeCell = turnSheet[XLSX.utils.encode_cell({r: R, c: 1})];
+                    const noteCell = turnSheet[XLSX.utils.encode_cell({r: R, c: 2})]; // 读取备注列
                     
                     if (!dateCell || !timeCell) continue;
                     
@@ -363,6 +428,8 @@
                     let dateStr = dateCell.w || dateCell.v;
                     // 获取时间字符串
                     let timeStr = timeCell.w;
+                    // 获取备注
+                    let note = noteCell ? (noteCell.w || noteCell.v) : '';
                     
                     if (dateStr && timeStr) {
                         // 组合日期和时间字符串
@@ -374,7 +441,10 @@
                             const timeKey = datetime.getTime();
                             if (!uniqueTimes.has(timeKey)) {
                                 uniqueTimes.add(timeKey);
-                                currentData.push({datetime: datetime});
+                                currentData.push({
+                                    datetime: datetime,
+                                    note: note // 添加备注信息
+                                });
                             }
                         } else {
                             console.log('无效的日期时间:', dateTimeStr);
@@ -414,7 +484,36 @@
                     }
                 }
 
-                console.log('解析后的熄灯时间数据:', lightOffData.map(d => ({
+                // 读取起床时间sheet
+                const wakeUpSheet = workbook.Sheets[workbook.SheetNames[2]];
+                console.log('起床时间sheet名称:', workbook.SheetNames[2]);
+                
+                // 获取起床时间数据范围
+                const wakeUpRange = XLSX.utils.decode_range(wakeUpSheet['!ref']);
+                
+                // 直接读取单元格数据
+                wakeUpData = [];
+                for (let R = wakeUpRange.s.r + 1; R <= wakeUpRange.e.r; R++) {
+                    const dateCell = wakeUpSheet[XLSX.utils.encode_cell({r: R, c: 0})];
+                    
+                    if (!dateCell) continue;
+                    
+                    // 获取日期时间字符串
+                    let timeStr = dateCell.w || dateCell.v;
+                    if (timeStr) {
+                        // 直接解析完整的日期时间字符串
+                        const datetime = new Date(timeStr);
+                        
+                        if (!isNaN(datetime.getTime())) {
+                            wakeUpData.push({datetime: datetime});
+                            console.log('成功解析的起床时间:', datetime.toLocaleString('zh-CN'));
+                        } else {
+                            console.log('无效的起床时间:', timeStr);
+                        }
+                    }
+                }
+
+                console.log('解析后的起床时间数据:', wakeUpData.map(d => ({
                     original: d.datetime,
                     formatted: d.datetime.toLocaleString('zh-CN', {
                         year: 'numeric',
@@ -429,6 +528,7 @@
                 // 按时间排序
                 currentData.sort((a, b) => a.datetime - b.datetime);
                 lightOffData.sort((a, b) => a.datetime - b.datetime);
+                wakeUpData.sort((a, b) => a.datetime - b.datetime);
                 
                 console.log('翻身数据总数:', currentData.length);
                 console.log('翻身数据预览:', currentData.slice(0, 5).map(d => ({
@@ -460,10 +560,17 @@
                     return;
                 }
                 
-                // 设置日期范围
+                // 设置日期范围为最近7天
                 const dates = currentData.map(row => row.datetime);
-                const minDate = new Date(Math.min(...dates));
                 const maxDate = new Date(Math.max(...dates));
+                const minDate = new Date(maxDate);
+                minDate.setDate(maxDate.getDate() - 6); // 设置为7天前（包含今天）
+                
+                // 确保最小日期不早于数据中的最早日期
+                const dataMinDate = new Date(Math.min(...dates));
+                if (minDate < dataMinDate) {
+                    minDate.setTime(dataMinDate.getTime());
+                }
                 
                 document.getElementById('startDate').value = minDate.toISOString().split('T')[0];
                 document.getElementById('endDate').value = maxDate.toISOString().split('T')[0];
@@ -482,9 +589,9 @@
             const startDate = new Date(document.getElementById('startDate').value);
             const endDate = new Date(document.getElementById('endDate').value);
             
-            // 设置开始日期为当天的22:00
+            // 设置开始日期为当天的21:00
             const filterStartDate = new Date(startDate);
-            filterStartDate.setHours(22, 0, 0, 0);
+            filterStartDate.setHours(21, 0, 0, 0);
             
             // 设置结束日期为次日的8:00
             const filterEndDate = new Date(endDate);
@@ -496,7 +603,17 @@
             // 过滤日期范围内的数据
             const filteredData = currentData.filter(row => {
                 const date = row.datetime;
-                return date >= filterStartDate && date <= filterEndDate;
+                const hour = date.getHours();
+                
+                // 创建用于比较的日期对象
+                const compareDate = new Date(date);
+                if (hour < 8) {
+                    // 如果是凌晨时间，使用前一天的日期进行比较
+                    compareDate.setDate(compareDate.getDate() - 1);
+                }
+                compareDate.setHours(21, 0, 0, 0);
+                
+                return compareDate >= filterStartDate && date <= filterEndDate;
             });
             
             console.log('过滤后的数据数量:', filteredData.length);
@@ -640,42 +757,181 @@
             // 处理睡眠周期数据
             const sleepCycleData = new Map();
             
-            // 按天分组数据
+            // 首先收集所有相关日期
+            const allDates = new Set();
+            
+            // 添加翻身时间的日期
             filteredData.forEach(row => {
                 const date = new Date(row.datetime);
                 const hour = date.getHours();
                 
-                // 只处理22:00-08:00的数据
-                if (hour >= 22 || hour <= 8) {
-                    // 计算相对时间（分钟）
-                    let minutes;
-                    if (hour >= 22) {
-                        minutes = (hour - 22) * 60 + date.getMinutes();
-                    } else {
-                        minutes = (hour + 2) * 60 + date.getMinutes();
-                    }
-                    
-                    // 获取日期键（使用前一天的日期作为键，如果时间是凌晨）
-                    let dayKey;
-                    if (hour < 8) {
-                        const prevDay = new Date(date);
-                        prevDay.setDate(date.getDate() - 1);
-                        dayKey = `${prevDay.getFullYear()}-${String(prevDay.getMonth() + 1).padStart(2, '0')}-${String(prevDay.getDate()).padStart(2, '0')}`;
-                    } else {
-                        dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                    }
-                    
+                let dayKey;
+                if (hour < 8) {
+                    // 凌晨时间算作前一天的数据
+                    const prevDay = new Date(date);
+                    prevDay.setDate(date.getDate() - 1);
+                    dayKey = prevDay.toLocaleDateString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                } else if (hour >= 22) {
+                    // 晚上时间算作当天的数据
+                    dayKey = date.toLocaleDateString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                }
+                
+                if (dayKey) {
+                    allDates.add(dayKey);
                     if (!sleepCycleData.has(dayKey)) {
                         sleepCycleData.set(dayKey, []);
                     }
                     sleepCycleData.get(dayKey).push({
-                        minutes: minutes,
+                        minutes: hour >= 22 ? (hour - 22) * 60 + date.getMinutes() : (hour + 2) * 60 + date.getMinutes(),
                         hour: hour,
-                        fullTime: date
+                        fullTime: date,
+                        note: row.note
                     });
                 }
             });
 
+            // 添加熄灯时间的日期
+            if (lightOffData) {
+                lightOffData.forEach(row => {
+                    const date = new Date(row.datetime);
+                    const hour = date.getHours();
+                    let dayKey;
+                    if (hour < 8) {
+                        // 凌晨的熄灯时间算作前一天的数据
+                        const prevDay = new Date(date);
+                        prevDay.setDate(date.getDate() - 1);
+                        dayKey = prevDay.toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                        });
+                    } else {
+                        dayKey = date.toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                        });
+                    }
+                    allDates.add(dayKey);
+                });
+            }
+
+            // 添加起床时间的日期（使用前一天的日期）
+            if (wakeUpData) {
+                wakeUpData.forEach(row => {
+                    const date = new Date(row.datetime);
+                    const prevDay = new Date(date);
+                    prevDay.setDate(date.getDate() - 1);
+                    const dayKey = prevDay.toLocaleDateString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                    allDates.add(dayKey);
+                });
+            }
+
+            // 对日期进行排序
+            console.log('allDates:', Array.from(allDates));
+            const sortedDates = Array.from(allDates).sort((a, b) => {
+                // 将日期字符串转换为时间戳进行比较
+                const [yearA, monthA, dayA] = a.split('/');
+                const [yearB, monthB, dayB] = b.split('/');
+                const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
+                const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
+                return dateB.getTime() - dateA.getTime(); // 从新到旧排序
+            });
+            console.log('sortedDates:', sortedDates);
+
+            // 创建新的有序Map
+            const sortedSleepCycleData = new Map();
+            for (const date of sortedDates) {
+                sortedSleepCycleData.set(date, sleepCycleData.get(date) || []);
+            }
+
+            console.log('sleepCycleData:', Object.fromEntries(sleepCycleData));
+            console.log('sortedSleepCycleData:', Object.fromEntries(sortedSleepCycleData));
+
+            // 7. 睡觉时长统计图
+            const sleepDurationData = [];
+            
+            // 处理有熄灯时间和起床时间的日期
+            if (lightOffData && wakeUpData) {
+                const lightOffMap = new Map();
+                const wakeUpMap = new Map();
+                
+                // 将熄灯时间按日期分组
+                lightOffData.forEach(d => {
+                    const date = new Date(d.datetime);
+                    const hour = date.getHours();
+                    let dayKey;
+                    if (hour < 8) {
+                        // 凌晨的熄灯时间算作前一天的数据
+                        const prevDay = new Date(date);
+                        prevDay.setDate(date.getDate() - 1);
+                        dayKey = prevDay.toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                        });
+                    } else {
+                        dayKey = date.toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                        });
+                    }
+                    lightOffMap.set(dayKey, date);
+                });
+                
+                // 将起床时间按日期分组（使用前一天的日期作为key）
+                wakeUpData.forEach(d => {
+                    const date = new Date(d.datetime);
+                    const prevDay = new Date(date);
+                    prevDay.setDate(date.getDate() - 1);
+                    const dayKey = prevDay.toLocaleDateString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                    wakeUpMap.set(dayKey, date);
+                });
+                
+                // 计算睡觉时长
+                for (const [date, lightOffTime] of lightOffMap) {
+                    const wakeUpTime = wakeUpMap.get(date);
+                    if (wakeUpTime) {
+                        const duration = (wakeUpTime - lightOffTime) / (1000 * 60 * 60); // 转换为小时
+                        sleepDurationData.push({
+                            date: date,
+                            duration: duration,
+                            lightOffTime: lightOffTime,
+                            wakeUpTime: wakeUpTime
+                        });
+                    }
+                }
+            }
+            
+            // 对数据进行排序
+            sleepDurationData.sort((a, b) => {
+                const [yearA, monthA, dayA] = a.date.split('/');
+                const [yearB, monthB, dayB] = b.date.split('/');
+                const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
+                const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
+                return dateB.getTime() - dateA.getTime(); // 从新到旧排序
+            });
+
+            // 打印调试信息
+            console.log('sleepDurationData:', sleepDurationData);
+            
             return {
                 hourly: Object.fromEntries(hourlyData),
                 daily: Object.fromEntries(dailyData),
@@ -691,7 +947,7 @@
                         upper: upperBound
                     }
                 },
-                sleepCycle: Object.fromEntries(sleepCycleData)
+                sleepCycle: Object.fromEntries(sortedSleepCycleData)
             };
         }
 
@@ -706,17 +962,157 @@
                 if (chart) chart.destroy();
             });
 
-            // 定义统一的颜色方案
-            const colors = {
-                primary: 'rgb(75, 192, 192)',       // 主要数据颜色
-                secondary: 'rgb(255, 99, 132)',     // 次要/对比数据颜色
-                highlight: 'rgb(153, 102, 255)',    // 高亮数据颜色
-                background: {
-                    primary: 'rgba(75, 192, 192, 0.2)',
-                    secondary: 'rgba(255, 99, 132, 0.2)',
-                    highlight: 'rgba(153, 102, 255, 0.2)'
+            // 计算睡觉时长数据
+            const sleepDurationData = [];
+            if (lightOffData && wakeUpData) {
+                const lightOffMap = new Map();
+                const wakeUpMap = new Map();
+                
+                // 将熄灯时间按日期分组
+                lightOffData.forEach(d => {
+                    const date = new Date(d.datetime);
+                    const hour = date.getHours();
+                    let dayKey;
+                    if (hour < 8) {
+                        const prevDay = new Date(date);
+                        prevDay.setDate(date.getDate() - 1);
+                        dayKey = prevDay.toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                        });
+                    } else {
+                        dayKey = date.toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                        });
+                    }
+                    lightOffMap.set(dayKey, date);
+                });
+                
+                // 将起床时间按日期分组
+                wakeUpData.forEach(d => {
+                    const date = new Date(d.datetime);
+                    const prevDay = new Date(date);
+                    prevDay.setDate(date.getDate() - 1);
+                    const dayKey = prevDay.toLocaleDateString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                    wakeUpMap.set(dayKey, date);
+                });
+                
+                // 计算睡觉时长
+                for (const [date, lightOffTime] of lightOffMap) {
+                    const wakeUpTime = wakeUpMap.get(date);
+                    if (wakeUpTime) {
+                        const duration = (wakeUpTime - lightOffTime) / (1000 * 60 * 60);
+                        sleepDurationData.push({
+                            date: date,
+                            duration: duration
+                        });
+                    }
                 }
-            };
+            }
+
+            // 对数据进行排序
+            sleepDurationData.sort((a, b) => {
+                const [yearA, monthA, dayA] = a.date.split('/');
+                const [yearB, monthB, dayB] = b.date.split('/');
+                const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
+                const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
+                return dateB.getTime() - dateA.getTime();
+            });
+
+            // 添加睡觉时长统计图表
+            const sleepDurationCtx = document.getElementById('sleepDurationChart');
+            if (sleepDurationCtx && sleepDurationData.length > 0) {
+                // 设置canvas的样式
+                sleepDurationCtx.style.width = '100%';
+                sleepDurationCtx.style.height = '400px';
+                sleepDurationCtx.style.display = 'block';
+                
+                // 确保容器可见
+                const container = sleepDurationCtx.parentElement;
+                container.style.display = 'block';
+                container.style.height = '400px';
+                container.style.width = '100%';
+                container.style.position = 'relative';
+                container.style.backgroundColor = '#fff';
+                container.style.border = '1px solid #eee';
+                container.style.borderRadius = '5px';
+                container.style.padding = '20px';
+                container.style.overflow = 'hidden';
+                container.style.margin = '10px 0';
+                
+                const sleepDurationChart = new Chart(sleepDurationCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: sleepDurationData.map(d => d.date),
+                        datasets: [{
+                            label: '睡觉时长（小时）',
+                            data: sleepDurationData.map(d => d.duration),
+                            backgroundColor: 'rgb(75, 192, 192)',
+                            borderColor: 'rgb(75, 192, 192)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: '睡觉时长统计'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const duration = context.raw;
+                                        const hours = Math.floor(duration);
+                                        const minutes = Math.round((duration - hours) * 60);
+                                        return `睡觉时长: ${hours}小时${minutes}分钟`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: '时长（小时）'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '日期'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // 保存图表实例
+                charts.sleepDuration = sleepDurationChart;
+                
+                // 打印调试信息
+                console.log('睡觉时长图表数据:', sleepDurationChart.data);
+                console.log('睡觉时长图表配置:', sleepDurationChart.options);
+                console.log('睡觉时长图表状态:', sleepDurationChart);
+                console.log('睡觉时长图表是否渲染:', sleepDurationChart.ctx.canvas.width > 0 && sleepDurationChart.ctx.canvas.height > 0);
+                console.log('睡觉时长图表容器尺寸:', {
+                    width: sleepDurationCtx.parentElement.offsetWidth,
+                    height: sleepDurationCtx.parentElement.offsetHeight
+                });
+                console.log('睡觉时长图表画布尺寸:', {
+                    width: sleepDurationCtx.width,
+                    height: sleepDurationCtx.height
+                });
+            }
 
             // 生成渐变色
             function generateGradientColors(count) {
@@ -767,6 +1163,15 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 20,
+                            bottom: 10
+                        }
+                    },
                     plugins: {
                         title: {
                             display: true,
@@ -841,6 +1246,15 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 20,
+                            bottom: 10
+                        }
+                    },
                     plugins: {
                         title: {
                             display: true,
@@ -891,6 +1305,15 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 20,
+                            bottom: 10
+                        }
+                    },
                     plugins: {
                         title: {
                             display: true,
@@ -942,6 +1365,15 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 20,
+                            bottom: 10
+                        }
+                    },
                     plugins: {
                         title: {
                             display: true,
@@ -1024,6 +1456,15 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 20,
+                            bottom: 10
+                        }
+                    },
                     plugins: {
                         title: {
                             display: true,
@@ -1079,65 +1520,101 @@
                 {
                     label: '翻身时间',
                     data: Object.entries(data.sleepCycle)
-                        .sort((a, b) => b[0].localeCompare(a[0]))
-                        .map(([date, points]) => 
-                            points.map(p => ({
+                        .filter(([date]) => {
+                            // 将日期字符串转换为Date对象进行比较
+                            const [year, month, day] = date.split('/');
+                            const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                            dateObj.setHours(21, 0, 0, 0); // 设置时间为当天21:00
+                            const startDate = new Date(document.getElementById('startDate').value);
+                            startDate.setHours(21, 0, 0, 0); // 设置时间为当天21:00
+                            const endDate = new Date(document.getElementById('endDate').value);
+                            endDate.setHours(23, 59, 59, 999); // 设置时间为当天结束
+                            return dateObj >= startDate && dateObj <= endDate;
+                        })
+                        .sort((a, b) => {
+                            // 将日期字符串转换为时间戳进行比较
+                            const [yearA, monthA, dayA] = a[0].split('/');
+                            const [yearB, monthB, dayB] = b[0].split('/');
+                            const timestampA = new Date(parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA)).getTime();
+                            const timestampB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB)).getTime();
+                            return timestampB - timestampA; // 从新到旧排序
+                        })
+                        .map(([date, points]) => {
+                            console.log('处理日期:', date, '数据点:', points);
+                            return points.map(p => ({
                                 x: p.hour >= 21 ? 
                                     (p.hour - 21) + (p.fullTime.getMinutes() / 60) : 
                                     (p.hour + 3) + (p.fullTime.getMinutes() / 60),
-                                y: new Date(date).toLocaleDateString('zh-CN', {
-                                    year: 'numeric',
-                                    month: '2-digit',
-                                    day: '2-digit'
-                                }),
-                                fullTime: p.fullTime
-                            }))
-                        ).flat(),
-                    backgroundColor: colors.primary,
-                    pointRadius: 4
+                                y: date,
+                                fullTime: p.fullTime,
+                                note: p.note
+                            }));
+                        }).flat(),
+                    backgroundColor: function(context) {
+                        const point = context.raw;
+                        return point.note ? colors.highlight : colors.primary;
+                    },
+                    pointRadius: function(context) {
+                        const point = context.raw;
+                        return point.note ? 8 : 4;
+                    },
+                    pointStyle: function(context) {
+                        const point = context.raw;
+                        return point.note ? 'star' : 'circle';
+                    },
+                    borderColor: function(context) {
+                        const point = context.raw;
+                        return point.note ? colors.highlight : colors.primary;
+                    },
+                    borderWidth: function(context) {
+                        const point = context.raw;
+                        return point.note ? 2 : 1;
+                    }
                 }
             ];
 
             // 添加熄灯时间数据
             if (lightOffData && lightOffData.length > 0) {
-                console.log('处理熄灯时间数据，原始数据:', lightOffData);
                 const startDate = new Date(document.getElementById('startDate').value);
                 const endDate = new Date(document.getElementById('endDate').value);
                 startDate.setHours(0, 0, 0, 0);
                 endDate.setHours(23, 59, 59, 999);
                 
-                const filteredLightOffData = lightOffData.filter(d => {
-                    const date = new Date(d.datetime);
-                    const result = date >= startDate && date <= endDate;
-                    if (!result) {
-                        console.log('过滤掉的熄灯时间:', date, '不在范围内:', startDate, '-', endDate);
-                    }
-                    return result;
-                });
-
-                console.log('过滤后的熄灯时间数据:', filteredLightOffData);
+                const filteredLightOffData = lightOffData
+                    .filter(d => {
+                        const date = new Date(d.datetime);
+                        const checkDate = new Date(date);
+                        if (date.getHours() < 8) {
+                            checkDate.setDate(checkDate.getDate() - 1);
+                        }
+                        checkDate.setHours(0, 0, 0, 0);
+                        return checkDate >= startDate && checkDate <= endDate;
+                    });
 
                 if (filteredLightOffData.length > 0) {
                     const lightOffPoints = filteredLightOffData.map(d => {
                         const date = new Date(d.datetime);
                         const hour = date.getHours();
                         const minutes = date.getMinutes();
-                        const point = {
+                        
+                        // 对于凌晨的时间，使用前一天的日期
+                        const displayDate = new Date(date);
+                        if (hour < 8) {
+                            displayDate.setDate(displayDate.getDate() - 1);
+                        }
+                        
+                        return {
                             x: hour >= 21 ? 
                                 (hour - 21) + (minutes / 60) : 
                                 (hour + 3) + (minutes / 60),
-                            y: date.toLocaleDateString('zh-CN', {
+                            y: displayDate.toLocaleDateString('zh-CN', {
                                 year: 'numeric',
                                 month: '2-digit',
                                 day: '2-digit'
                             }),
                             fullTime: date
                         };
-                        console.log('熄灯时间点:', point);
-                        return point;
                     });
-
-                    console.log('生成的熄灯时间点:', lightOffPoints);
 
                     sleepCycleDatasets.push({
                         label: '熄灯时间',
@@ -1149,10 +1626,113 @@
                 }
             }
 
+            // 添加起床时间数据
+            if (wakeUpData && wakeUpData.length > 0) {
+                const startDate = new Date(document.getElementById('startDate').value);
+                const endDate = new Date(document.getElementById('endDate').value);
+                startDate.setHours(0, 0, 0, 0);
+                endDate.setHours(23, 59, 59, 999);
+                
+                const filteredWakeUpData = wakeUpData
+                    .filter(d => {
+                        const date = new Date(d.datetime);
+                        const checkDate = new Date(date);
+                        checkDate.setDate(checkDate.getDate() - 1);
+                        checkDate.setHours(0, 0, 0, 0);
+                        return checkDate >= startDate && checkDate <= endDate;
+                    });
+
+                if (filteredWakeUpData.length > 0) {
+                    const wakeUpPoints = filteredWakeUpData.map(d => {
+                        const date = new Date(d.datetime);
+                        const hour = date.getHours();
+                        const minutes = date.getMinutes();
+                        
+                        // 获取前一天的日期作为显示日期
+                        const displayDate = new Date(date);
+                        displayDate.setDate(displayDate.getDate() - 1);
+                        
+                        return {
+                            x: hour >= 21 ? 
+                                (hour - 21) + (minutes / 60) : 
+                                (hour + 3) + (minutes / 60),
+                            y: displayDate.toLocaleDateString('zh-CN', {
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit'
+                            }),
+                            fullTime: date
+                        };
+                    });
+
+                    sleepCycleDatasets.push({
+                        label: '起床时间',
+                        data: wakeUpPoints,
+                        backgroundColor: 'rgb(255, 159, 64)',
+                        pointRadius: 6,
+                        pointStyle: 'rect'
+                    });
+                }
+            }
+
+            // 获取所有日期
+            const allDates = new Set();
+            
+            // 首先添加筛选范围内的所有日期
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+            let currentDate = new Date(startDate);
+            while (currentDate <= endDate) {
+                const dateStr = currentDate.toLocaleDateString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                allDates.add(dateStr);
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            // 然后添加有数据的日期
+            sleepCycleDatasets.forEach(dataset => {
+                dataset.data.forEach(point => {
+                    allDates.add(point.y);
+                });
+            });
+
+            // 对日期进行排序
+            const sortedDates = Array.from(allDates).sort((a, b) => {
+                const [yearA, monthA, dayA] = a.split('/');
+                const [yearB, monthB, dayB] = b.split('/');
+                const timestampA = new Date(parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA)).getTime();
+                const timestampB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB)).getTime();
+                return timestampB - timestampA; // 从新到旧排序
+            });
+
+            // 打印调试信息
+            console.log('data.sleepCycle:', data.sleepCycle);
+            console.log('allDates:', Array.from(allDates));
+            console.log('sortedDates:', sortedDates);
+            console.log('sleepCycleDatasets:', sleepCycleDatasets);
+
+            // 确保每个日期都有对应的数据点
+            const processedDatasets = sleepCycleDatasets.map(dataset => {
+                const newData = [];
+                sortedDates.forEach(date => {
+                    const points = dataset.data.filter(point => point.y === date);
+                    if (points.length > 0) {
+                        newData.push(...points);
+                    }
+                });
+                return {
+                    ...dataset,
+                    data: newData
+                };
+            });
+
             charts.sleepCycle = new Chart(document.getElementById('sleepCycleChart'), {
                 type: 'scatter',
                 data: {
-                    datasets: sleepCycleDatasets
+                    datasets: processedDatasets
                 },
                 options: {
                     responsive: true,
@@ -1160,7 +1740,7 @@
                     layout: {
                         padding: {
                             left: 10,
-                            right: 30,
+                            right: 10,
                             top: 20,
                             bottom: 10
                         }
@@ -1168,8 +1748,8 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: '翻身时间分布（红色三角形表示熄灯时间）',
-                            padding: 20
+                            text: '翻身时间分布',
+                            padding: 10
                         },
                         tooltip: {
                             callbacks: {
@@ -1177,13 +1757,17 @@
                                     const point = context.raw;
                                     if (!point.fullTime) return '';
                                     const label = context.dataset.label;
-                                    return `${label}: ${point.fullTime.toLocaleString('zh-CN', {
+                                    let text = `${label}: ${point.fullTime.toLocaleString('zh-CN', {
                                         year: 'numeric',
                                         month: '2-digit',
                                         day: '2-digit',
                                         hour: '2-digit',
                                         minute: '2-digit'
                                     })}`;
+                                    if (point.note) {
+                                        text += `\n备注: ${point.note}`;
+                                    }
+                                    return text;
                                 }
                             }
                         }
@@ -1196,7 +1780,7 @@
                                 padding: {top: 10, bottom: 0}
                             },
                             min: 0,
-                            max: 11,
+                            max: 12,
                             ticks: {
                                 stepSize: 1,
                                 callback: function(value) {
@@ -1225,7 +1809,12 @@
                                 font: {
                                     size: 11
                                 }
-                            }
+                            },
+                            afterFit: function(scaleInstance) {
+                                // 确保所有标签都显示
+                                scaleInstance.width = 100;
+                            },
+                            labels: sortedDates
                         }
                     }
                 }
@@ -1244,6 +1833,26 @@
             }
             document.getElementById(tabName).style.display = "block";
             evt.currentTarget.className += " active";
+        }
+
+        function setLastSevenDays() {
+            if (!currentData || currentData.length === 0) return;
+            
+            const dates = currentData.map(row => row.datetime);
+            const maxDate = new Date(Math.max(...dates));
+            const minDate = new Date(maxDate);
+            minDate.setDate(maxDate.getDate() - 6);
+            
+            // 确保最小日期不早于数据中的最早日期
+            const dataMinDate = new Date(Math.min(...dates));
+            if (minDate < dataMinDate) {
+                minDate.setTime(dataMinDate.getTime());
+            }
+            
+            document.getElementById('startDate').value = minDate.toISOString().split('T')[0];
+            document.getElementById('endDate').value = maxDate.toISOString().split('T')[0];
+            
+            updateCharts();
         }
     </script>
 </body>
