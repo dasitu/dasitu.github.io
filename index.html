@@ -847,7 +847,7 @@
                 const [yearB, monthB, dayB] = b.split('/');
                 const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
                 const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
-                return dateB.getTime() - dateA.getTime(); // 从新到旧排序
+                return dateA.getTime() - dateB.getTime();
             });
             console.log('sortedDates:', sortedDates);
 
@@ -926,7 +926,7 @@
                 const [yearB, monthB, dayB] = b.date.split('/');
                 const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
                 const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
-                return dateB.getTime() - dateA.getTime(); // 从新到旧排序
+                return dateA.getTime() - dateB.getTime();
             });
 
             // 打印调试信息
@@ -1023,7 +1023,7 @@
                 const [yearB, monthB, dayB] = b.date.split('/');
                 const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
                 const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
-                return dateB.getTime() - dateA.getTime();
+                return dateA.getTime() - dateB.getTime();
             });
 
             // 添加睡觉时长统计图表
@@ -1051,13 +1051,25 @@
                     type: 'bar',
                     data: {
                         labels: sleepDurationData.map(d => d.date),
-                        datasets: [{
-                            label: '睡觉时长（小时）',
-                            data: sleepDurationData.map(d => d.duration),
-                            backgroundColor: 'rgb(75, 192, 192)',
-                            borderColor: 'rgb(75, 192, 192)',
-                            borderWidth: 1
-                        }]
+                        datasets: [
+                            {
+                                label: '睡觉时长（小时）',
+                                data: sleepDurationData.map(d => d.duration),
+                                backgroundColor: 'rgb(75, 192, 192)',
+                                borderColor: 'rgb(75, 192, 192)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: '10小时参考线',
+                                data: sleepDurationData.map(() => 10),
+                                type: 'line',
+                                borderColor: 'rgb(255, 0, 0)',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                fill: false,
+                                pointRadius: 0
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
@@ -1540,8 +1552,25 @@
                             return timestampB - timestampA; // 从新到旧排序
                         })
                         .map(([date, points]) => {
-                            console.log('处理日期:', date, '数据点:', points);
-                            return points.map(p => ({
+                            // 获取当天的起床时间
+                            const wakeUpTime = wakeUpData?.find(d => {
+                                const wakeUpDate = new Date(d.datetime);
+                                const prevDay = new Date(wakeUpDate);
+                                prevDay.setDate(wakeUpDate.getDate() - 1);
+                                return prevDay.toLocaleDateString('zh-CN', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit'
+                                }) === date;
+                            });
+
+                            // 过滤掉起床时间之后的数据
+                            const filteredPoints = points.filter(p => {
+                                if (!wakeUpTime) return true; // 如果没有起床时间，保留所有数据
+                                return p.fullTime <= wakeUpTime.datetime;
+                            });
+
+                            return filteredPoints.map(p => ({
                                 x: p.hour >= 21 ? 
                                     (p.hour - 21) + (p.fullTime.getMinutes() / 60) : 
                                     (p.hour + 3) + (p.fullTime.getMinutes() / 60),
